@@ -67,7 +67,9 @@ const App: React.FC = () => {
                 setManagementStatus(savedState.managementStatus || {});
                 setCourseStatus(savedState.courseStatus || {});
 
-                if (savedState.selectedSchoolCode) {
+                // Don't re-select school on mobile to show the list first
+                const isMobile = window.innerWidth < 1024; // Tailwind's lg breakpoint
+                if (savedState.selectedSchoolCode && !isMobile) {
                     const foundSchool = rehydratedSchools.find((s: School) => s.code === savedState.selectedSchoolCode);
                     setSelectedSchool(foundSchool || null);
                 }
@@ -220,7 +222,7 @@ const App: React.FC = () => {
                     </div>
                 )}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
-                    <div className="lg:col-span-1">
+                    <div className={`lg:col-span-1 ${selectedSchool ? 'hidden lg:block' : 'block'}`}>
                         <SchoolList 
                             schools={schools}
                             onSelectSchool={handleSelectSchool}
@@ -229,9 +231,10 @@ const App: React.FC = () => {
                             managementStatusMap={managementStatus}
                         />
                     </div>
-                    <div className="lg:col-span-2">
+                    <div className={`lg:col-span-2 ${selectedSchool ? 'block' : 'hidden lg:block'}`}>
                         <SchoolDetail
                             school={selectedSchool}
+                            onGoBack={() => handleSelectSchool(null)}
                             allAppointments={appointments}
                             schoolAppointments={selectedSchool ? schoolAppointments.get(selectedSchool.code) || [] : []}
                             onAddAppointment={addAppointment}
