@@ -1,0 +1,5 @@
+{
+  "name": "Agendador de Citas Escolares",
+  "description": "Una aplicación para gestionar y agendar visitas y llamadas para diferentes colegios y sus respectivos cursos, con un sistema de detección de conflictos incorporado.",
+  "requestFramePermissions": []
+}
