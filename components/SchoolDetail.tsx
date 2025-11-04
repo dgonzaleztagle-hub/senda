@@ -3,10 +3,11 @@ import type { School, Appointment, Course, Note } from '../types';
 import { AppointmentType, CourseVisitStatus, SchoolContactStatus, SchoolManagementStatus } from '../types';
 import { SchedulerModal } from './SchedulerModal';
 import { CourseItem } from './CourseItem';
-import { PhoneIcon, MailIcon, UserIcon, CalendarIcon, ClockIcon, MapPinIcon, EditIcon, SaveIcon, XIcon, ClipboardListIcon, CheckCircleIcon } from '../constants';
+import { PhoneIcon, MailIcon, UserIcon, CalendarIcon, ClockIcon, MapPinIcon, EditIcon, SaveIcon, XIcon, ClipboardListIcon, CheckCircleIcon, ArrowLeftIcon } from '../constants';
 
 interface SchoolDetailProps {
     school: School | null;
+    onGoBack: () => void;
     allAppointments: Appointment[];
     schoolAppointments: Appointment[];
     onAddAppointment: (appointment: Omit<Appointment, 'id'>) => void;
@@ -43,7 +44,7 @@ const NoteViewModal: React.FC<{ note: Note | null, onClose: () => void }> = ({ n
 };
 
 export const SchoolDetail: React.FC<SchoolDetailProps> = ({ 
-    school, allAppointments, schoolAppointments, onAddAppointment, onUpdateSchool, onAddNote, schoolStatus, courseStatusMap, onUpdateCourseStatus, managementStatus, onUpdateManagementStatus 
+    school, onGoBack, allAppointments, schoolAppointments, onAddAppointment, onUpdateSchool, onAddNote, schoolStatus, courseStatusMap, onUpdateCourseStatus, managementStatus, onUpdateManagementStatus 
 }) => {
     const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
     const [schedulerContext, setSchedulerContext] = useState<{ type: AppointmentType; course?: Course }>({ type: AppointmentType.SchoolCall });
@@ -108,6 +109,14 @@ export const SchoolDetail: React.FC<SchoolDetailProps> = ({
     return (
         <>
             <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 space-y-8">
+                 <button
+                    onClick={onGoBack}
+                    className="flex items-center space-x-2 text-indigo-600 font-semibold mb-4 lg:hidden bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors"
+                >
+                    <ArrowLeftIcon className="w-5 h-5" />
+                    <span>Volver a la lista</span>
+                </button>
+                
                 {/* School Header */}
                 <div className="flex justify-between items-start">
                     <div>
