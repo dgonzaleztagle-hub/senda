@@ -5,6 +5,7 @@ import { extractSchoolDataFromImage, processRawData } from './services/geminiSer
 import { SchoolList } from './components/SchoolList';
 import { SchoolDetail } from './components/SchoolDetail';
 import { BuildingIcon } from './constants';
+import { CalendarView } from './components/CalendarView';
 
 const LOCAL_STORAGE_KEY = 'schoolSchedulerAppState';
 
@@ -18,6 +19,7 @@ const App: React.FC = () => {
     const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'agenda' | 'calendario'>('agenda');
 
     const loadInitialData = useCallback(async () => {
         try {
@@ -64,8 +66,16 @@ const App: React.FC = () => {
                 setSchools(rehydratedSchools);
                 setAppointments(rehydratedAppointments);
                 setSchoolStatus(savedState.schoolStatus || {});
-                setManagementStatus(savedState.managementStatus || {});
                 setCourseStatus(savedState.courseStatus || {});
+                
+                // Synchronize management status to ensure all schools have an entry
+                const loadedManagementStatus = savedState.managementStatus || {};
+                const synchronizedManagementStatus: Record<number, SchoolManagementStatus> = {};
+                rehydratedSchools.forEach((school: School) => {
+                    synchronizedManagementStatus[school.code] = loadedManagementStatus[school.code] || SchoolManagementStatus.Pending;
+                });
+                setManagementStatus(synchronizedManagementStatus);
+
 
                 // Don't re-select school on mobile to show the list first
                 const isMobile = window.innerWidth < 1024; // Tailwind's lg breakpoint
@@ -176,6 +186,10 @@ const App: React.FC = () => {
             setSelectedSchool(updatedSchools.find(s => s.code === schoolId) || null);
         }
     };
+    
+    const handleSetActiveTab = (tab: 'agenda') => {
+        setActiveTab(tab);
+    }
 
     const schoolAppointments = useMemo(() => {
         const map = new Map<number, Appointment[]>();
@@ -192,20 +206,10 @@ const App: React.FC = () => {
         return <div className="flex items-center justify-center min-h-screen text-gray-500">Cargando datos de los colegios...</div>;
     }
 
-    if (error) {
-        // Simple error banner
-        return (
-             <div className="fixed top-0 left-1/2 -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-b-lg shadow-md z-50" role="alert">
-                <strong className="font-bold">Error: </strong>
-                <span className="block sm:inline">{error}</span>
-            </div>
-        )
-    }
-
     return (
-        <div className="min-h-screen bg-gray-100 font-sans">
-            <header className="bg-white shadow-md sticky top-0 z-20">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col h-screen bg-gray-100 font-sans">
+            <header className="bg-white shadow-md w-full sticky top-0 z-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                          <div className="flex items-center space-x-3">
                             <BuildingIcon className="h-8 w-8 text-indigo-600" />
@@ -215,37 +219,72 @@ const App: React.FC = () => {
                 </div>
             </header>
 
-            <main className="container mx-auto p-4 sm:p-6 lg:p-8">
+            <main className="flex-1 overflow-y-auto">
                 {error && (
-                    <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg shadow-md z-50" role="alert">
+                    <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-md z-50" role="alert">
+                        <strong className="font-bold">Error: </strong>
                         <span className="block sm:inline">{error}</span>
                     </div>
                 )}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
-                    <div className={`lg:col-span-1 ${selectedSchool ? 'hidden lg:block' : 'block'}`}>
-                        <SchoolList 
-                            schools={schools}
-                            onSelectSchool={handleSelectSchool}
-                            selectedSchool={selectedSchool}
-                            schoolStatusMap={schoolStatus}
-                            managementStatusMap={managementStatus}
-                        />
+                <div className="max-w-7xl mx-auto h-full flex flex-col p-4 sm:p-6 lg:p-8 gap-4">
+                     {/* Tab Navigation */}
+                    <div className="flex-shrink-0">
+                        <div className="border-b border-gray-200">
+                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                                <button
+                                    onClick={() => setActiveTab('agenda')}
+                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'agenda' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                >
+                                    Agenda
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('calendario')}
+                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'calendario' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                                >
+                                    Calendario
+                                </button>
+                            </nav>
+                        </div>
                     </div>
-                    <div className={`lg:col-span-2 ${selectedSchool ? 'block' : 'hidden lg:block'}`}>
-                        <SchoolDetail
-                            school={selectedSchool}
-                            onGoBack={() => handleSelectSchool(null)}
-                            allAppointments={appointments}
-                            schoolAppointments={selectedSchool ? schoolAppointments.get(selectedSchool.code) || [] : []}
-                            onAddAppointment={addAppointment}
-                            onUpdateSchool={handleUpdateSchool}
-                            onAddNote={handleAddNote}
-                            schoolStatus={selectedSchool ? schoolStatus[selectedSchool.code] : undefined}
-                            courseStatusMap={courseStatus}
-                            onUpdateCourseStatus={updateCourseStatus}
-                            managementStatus={selectedSchool ? managementStatus[selectedSchool.code] : undefined}
-                            onUpdateManagementStatus={handleUpdateManagementStatus}
-                        />
+
+                     {/* Content Area */}
+                    <div className="flex-1 min-h-0">
+                        {activeTab === 'agenda' ? (
+                            <div className="flex flex-row h-full gap-8">
+                                <div className={`flex-shrink-0 w-full lg:w-1/3 ${selectedSchool ? 'hidden lg:block' : 'block'}`}>
+                                    <SchoolList 
+                                        schools={schools}
+                                        onSelectSchool={handleSelectSchool}
+                                        selectedSchool={selectedSchool}
+                                        schoolStatusMap={schoolStatus}
+                                        managementStatusMap={managementStatus}
+                                    />
+                                </div>
+                                <div className={`flex-1 w-full lg:w-2/3 overflow-y-auto ${selectedSchool ? 'block' : 'hidden lg:block'}`}>
+                                    <SchoolDetail
+                                        school={selectedSchool}
+                                        onGoBack={() => handleSelectSchool(null)}
+                                        allAppointments={appointments}
+                                        schoolAppointments={selectedSchool ? schoolAppointments.get(selectedSchool.code) || [] : []}
+                                        onAddAppointment={addAppointment}
+                                        onUpdateSchool={handleUpdateSchool}
+                                        onAddNote={handleAddNote}
+                                        schoolStatus={selectedSchool ? schoolStatus[selectedSchool.code] : undefined}
+                                        courseStatusMap={courseStatus}
+                                        onUpdateCourseStatus={updateCourseStatus}
+                                        managementStatus={selectedSchool ? managementStatus[selectedSchool.code] : undefined}
+                                        onUpdateManagementStatus={handleUpdateManagementStatus}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <CalendarView 
+                                appointments={appointments} 
+                                schools={schools} 
+                                onSelectSchool={handleSelectSchool} 
+                                setActiveTab={handleSetActiveTab} 
+                            />
+                        )}
                     </div>
                 </div>
             </main>

@@ -18,10 +18,42 @@ export const SchoolList: React.FC<SchoolListProps> = ({ schools, onSelectSchool,
     school.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const sortedSchools = [...filteredSchools].sort((a, b) => {
+    const statusA = managementStatusMap[a.code] || SchoolManagementStatus.Pending;
+    const statusB = managementStatusMap[b.code] || SchoolManagementStatus.Pending;
+
+    // 1. Primary Sort: Completed schools always go to the bottom.
+    if (statusA === SchoolManagementStatus.Completed && statusB !== SchoolManagementStatus.Completed) return 1;
+    if (statusA !== SchoolManagementStatus.Completed && statusB === SchoolManagementStatus.Completed) return -1;
+    if (statusA === SchoolManagementStatus.Completed && statusB === SchoolManagementStatus.Completed) {
+        return a.name.localeCompare(b.name); // Sort completed schools alphabetically
+    }
+    
+    // --- From here on, both schools are 'Pending' ---
+
+    // 2. Secondary Sort: Prioritize schools with 4th-grade courses.
+    const hasFourthGradeA = a.courses.some(c => c.level === '4');
+    const hasFourthGradeB = b.courses.some(c => c.level === '4');
+    
+    if (hasFourthGradeA && !hasFourthGradeB) return -1;
+    if (!hasFourthGradeA && hasFourthGradeB) return 1;
+
+    // 3. Tertiary Sort: Within the above groups, sort by activity level. Inactive schools come first.
+    // An "inactive" school is one that has not been contacted AND has no notes.
+    const isInactiveA = schoolStatusMap[a.code] !== SchoolContactStatus.Contacted && a.notes.length === 0;
+    const isInactiveB = schoolStatusMap[b.code] !== SchoolContactStatus.Contacted && b.notes.length === 0;
+
+    if (isInactiveA && !isInactiveB) return -1; // Inactive A comes before active B
+    if (!isInactiveA && isInactiveB) return 1;  // Active A comes after inactive B
+
+    // 4. Fallback Sort: If all else is equal, sort by name for stability.
+    return a.name.localeCompare(b.name);
+  });
+
   return (
-    <div className="bg-white rounded-xl shadow-lg h-full max-h-[85vh] flex flex-col">
+    <div className="bg-white rounded-xl shadow-lg h-full max-h-[calc(100vh-10rem)] flex flex-col">
       <div className="p-4 border-b border-gray-200 sticky top-0 bg-white rounded-t-xl z-10">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Colegios ({filteredSchools.length})</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Colegios ({sortedSchools.length})</h2>
         <input
           type="text"
           placeholder="Buscar por nombre de colegio..."
@@ -31,13 +63,14 @@ export const SchoolList: React.FC<SchoolListProps> = ({ schools, onSelectSchool,
         />
       </div>
       <div className="overflow-y-auto flex-grow p-4 space-y-4">
-        {filteredSchools.length > 0 ? (
-          filteredSchools.map(school => {
+        {sortedSchools.length > 0 ? (
+          sortedSchools.map(school => {
             const contactStatus = schoolStatusMap[school.code] || SchoolContactStatus.NotContacted;
             const managementStatus = managementStatusMap[school.code] || SchoolManagementStatus.Pending;
             const lastNote = school.notes.length > 0 ? school.notes[0] : null;
             const wazeUrl = `https://www.waze.com/ul?ll=${school.latitude}%2C${school.longitude}&navigate=yes`;
-            
+            const hasFourthGrade = school.courses.some(c => c.level === '4');
+
             return (
               <button
                 key={school.code}
@@ -64,6 +97,11 @@ export const SchoolList: React.FC<SchoolListProps> = ({ schools, onSelectSchool,
                                 <span className="flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                     <CheckCircleIcon className="w-3 h-3 mr-1.5"/>
                                     Gestión Terminada
+                                </span>
+                            )}
+                            {hasFourthGrade && managementStatus !== SchoolManagementStatus.Completed && (
+                                <span className="flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 ring-1 ring-yellow-300">
+                                    4to Año
                                 </span>
                             )}
                         </div>
